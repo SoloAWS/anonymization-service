@@ -101,7 +101,7 @@ class PulsarConsumer:
                 consumer.acknowledge(message)
                 return
             
-            logger.debug(f"Received message of type {event_type}: {data}")
+            logger.info(f"Received message of type {event_type}: {data}")
             
             # Verificar si hay un manejador registrado para este tipo de evento
             if event_type in self.event_handlers:
@@ -112,7 +112,7 @@ class PulsarConsumer:
                 if event:
                     handler = self.event_handlers[event_type]
                     await handler(event)
-                    logger.debug(f"Event {event_type} processed successfully")
+                    logger.info(f"Event {event_type} processed successfully")
                 else:
                     logger.warning(f"Failed to create event from data: {data}")
             else:
@@ -161,48 +161,11 @@ class PulsarConsumer:
                     image_type=image_type,
                     timestamp=datetime.fromisoformat(data.get('timestamp')) if 'timestamp' in data else datetime.now()
                 )
-            elif event_type in ["AnonymizationHistCompleted", "AnonymizationXrayCompleted", "AnonymizationMriCompleted"]:
-                # Determinar el tipo de imagen basado en el evento
-                image_type = ImageType.UNKNOWN
-                if event_type == "AnonymizationHistCompleted":
-                    image_type = ImageType.HISTOLOGY
-                elif event_type == "AnonymizationXrayCompleted":
-                    image_type = ImageType.XRAY
-                elif event_type == "AnonymizationMriCompleted":
-                    image_type = ImageType.MRI
-                    
-                return AnonymizationCompleted(
-                    id=uuid.UUID(data.get('id')) if 'id' in data else uuid.uuid4(),
-                    image_id=uuid.UUID(data.get('image_id')) if 'image_id' in data else None,
-                    task_id=uuid.UUID(data.get('task_id')) if 'task_id' in data else None,
-                    image_type=image_type if 'image_type' not in data else ImageType(data.get('image_type')),
-                    result_file_path=data.get('result_file_path'),
-                    processing_time_ms=data.get('processing_time_ms', 0),
-                    timestamp=datetime.fromisoformat(data.get('timestamp')) if 'timestamp' in data else datetime.now()
-                )
-            elif event_type in ["AnonymizationHistFailed", "AnonymizationXrayFailed", "AnonymizationMriFailed"]:
-                # Determinar el tipo de imagen basado en el evento
-                image_type = ImageType.UNKNOWN
-                if event_type == "AnonymizationHistFailed":
-                    image_type = ImageType.HISTOLOGY
-                elif event_type == "AnonymizationXrayFailed":
-                    image_type = ImageType.XRAY
-                elif event_type == "AnonymizationMriFailed":
-                    image_type = ImageType.MRI
-                    
-                return AnonymizationFailed(
-                    id=uuid.UUID(data.get('id')) if 'id' in data else uuid.uuid4(),
-                    image_id=uuid.UUID(data.get('image_id')) if 'image_id' in data else None,
-                    task_id=uuid.UUID(data.get('task_id')) if 'task_id' in data else None,
-                    image_type=image_type if 'image_type' not in data else ImageType(data.get('image_type')),
-                    error_message=data.get('error_message'),
-                    timestamp=datetime.fromisoformat(data.get('timestamp')) if 'timestamp' in data else datetime.now()
-                )
             else:
-                logger.warning(f"Unknown event type: {event_type}")
+                logger.warning(f"Tipo de evento desconocido: {event_type}")
                 return None
         except Exception as e:
-            logger.error(f"Error creating event from data: {str(e)}")
+            logger.error(f"Error al crear evento a partir de los datos: {str(e)}")
             return None
 
     async def start_listening(self):
@@ -210,18 +173,20 @@ class PulsarConsumer:
         self._initialize()
         self.running = True
         
+        # Solo nos suscribimos al tópico de ImageReadyForAnonymization
         for event_type, topic in self.topics_mapping.items():
-            logger.info(f"Setting up consumer for topic: {topic}")
-            subscription_name = f"anonymization-service-{event_type.lower()}"
-            consumer = self._create_consumer(topic, subscription_name)
-            self.consumers[topic] = consumer
-            
-            # Iniciar tarea asíncrona para procesar mensajes
-            
-            logger.info(f"Creating async task for topic: {topic}")
-            asyncio.create_task(self._listen_for_messages(consumer))
+            # Solo procesar los eventos que necesitamos
+            if event_type == "ImageReadyForAnonymization":
+                logger.info(f"Configurando consumidor para el tópico: {topic}")
+                subscription_name = f"anonymization-service-{event_type.lower()}"
+                consumer = self._create_consumer(topic, subscription_name)
+                self.consumers[topic] = consumer
+                
+                # Iniciar tarea asíncrona para procesar mensajes
+                logger.info(f"Creando tarea asincrónica para el tópico: {topic}")
+                asyncio.create_task(self._listen_for_messages(consumer))
         
-        logger.info("Started listening for messages on all configured topics")
+        logger.info("Iniciada la escucha de mensajes en los tópicos configurados")
     
     async def _listen_for_messages(self, consumer):
         """
@@ -236,21 +201,26 @@ class PulsarConsumer:
                 topic = t
                 break
         logger.info(f"Starting to listen for messages on consumer for topic: {topic}")
-        logger.info(f"Starting to listen for messages on consumer")
+        
         while self.running:
             try:
-                logger.debug("Waiting to receive message")
-                # Recibir mensaje con timeout (para poder detener limpiamente)
-                message = consumer.receive(timeout_millis=3000)
+                # Use run_in_executor to make the blocking receive call non-blocking
+                loop = asyncio.get_event_loop()
+                message = await loop.run_in_executor(
+                    None, 
+                    lambda: consumer.receive(timeout_millis=1000)
+                )
+                
                 if message:
                     logger.info(f"Received message: {message}")
                     await self._process_message(consumer, message)
+                    
             except pulsar.Timeout:
-                # Timeout es normal, continuar
+                # Timeout is normal, continue
                 continue
             except Exception as e:
-                logger.error(f"Error receiving message: {str(e)}")
-                await asyncio.sleep(1)  # Pequeña pausa antes de reintentar
+                logger.error(f"Error receiving message: {str(e)}", exc_info=True)  # Add exc_info for more details
+                await asyncio.sleep(1)  # Small pause before retrying
     
     async def stop(self):
         """Detiene la escucha de mensajes y libera recursos"""

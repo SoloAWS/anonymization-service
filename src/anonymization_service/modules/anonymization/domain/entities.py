@@ -33,22 +33,14 @@ class AnonymizationTask(AggregateRoot):
     
     def route_to_anonymizer(self) -> AnonymizationRequested:
         """
-        Solicita anonimización y enruta la tarea al servicio correspondiente según el tipo de imagen.
+        Este método ya no es necesario en el nuevo flujo, pero lo mantenemos 
+        por compatibilidad con el código existente.
         """
         self.status = AnonymizationStatus.IN_PROGRESS
         self.started_at = datetime.now()
         
-        # Determinar el servicio de destino según el tipo de imagen
-        destination_service = ""
-        if self.image_type == ImageType.HISTOLOGY:
-            destination_service = "histology-anonymizer"
-        elif self.image_type == ImageType.XRAY:
-            destination_service = "xray-anonymizer"
-        elif self.image_type == ImageType.MRI:
-            destination_service = "mri-anonymizer"
-        else:
-            # Si el tipo no es reconocido, usar un servicio genérico
-            destination_service = "generic-anonymizer"
+        # Ya no determinamos un servicio de destino específico
+        destination_service = "anonymization-service"
         
         # Crear evento de solicitud de anonimización
         event = AnonymizationRequested(

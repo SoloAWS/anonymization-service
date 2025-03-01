@@ -12,8 +12,6 @@ from .modules.anonymization.infrastructure.messaging.pulsar_publisher import Pul
 from .modules.anonymization.infrastructure.messaging.pulsar_consumer import PulsarConsumer
 from .modules.anonymization.application.events.event_handlers import (
     ImageReadyForAnonymizationHandler,
-    AnonymizationCompletedHandler,
-    AnonymizationFailedHandler
 )
 from .api import api_router
 from .modules.anonymization.domain.events import (
@@ -61,12 +59,6 @@ PULSAR_PUBLISHER_TOPICS_MAPPING: Dict[str, str] = {
 
 PULSAR_CONSUMER_TOPICS_MAPPING: Dict[str, str] = {
     "ImageReadyForAnonymization": "persistent://public/default/image-anonymization",
-    "AnonymizationHistCompleted": "persistent://public/default/histology-anonymization-completed",
-    "AnonymizationXrayCompleted": "persistent://public/default/xray-anonymization-completed",
-    "AnonymizationMriCompleted": "persistent://public/default/mri-anonymization-completed",
-    "AnonymizationHistFailed": "persistent://public/default/histology-anonymization-failed",
-    "AnonymizationXrayFailed": "persistent://public/default/xray-anonymization-failed",
-    "AnonymizationMriFailed": "persistent://public/default/mri-anonymization-failed"
 }
 
 # Variables para guardar las instancias de mensajería
@@ -102,6 +94,7 @@ async def startup_event():
         logger.error(f"Error al inicializar el publicador de Pulsar: {str(e)}")
         logger.warning("Continuando sin publicador de Pulsar configurado")
     
+    
     # Inicializar el consumidor de Pulsar
     try:
         consumer = PulsarConsumer(
@@ -121,45 +114,21 @@ async def startup_event():
         
         # Registrar manejadores
         image_ready_handler = ImageReadyForAnonymizationHandler(repository, publisher)
-        anonymization_completed_handler = AnonymizationCompletedHandler(repository, publisher)
-        anonymization_failed_handler = AnonymizationFailedHandler(repository, publisher)
         
         # Registrar manejadores de eventos
         consumer.register_event_handler(
             "ImageReadyForAnonymization", 
             lambda event: image_ready_handler.handle(event)
         )
-        consumer.register_event_handler(
-            "AnonymizationHistCompleted", 
-            lambda event: anonymization_completed_handler.handle(event)
-        )
-        consumer.register_event_handler(
-            "AnonymizationXrayCompleted", 
-            lambda event: anonymization_completed_handler.handle(event)
-        )
-        consumer.register_event_handler(
-            "AnonymizationMriCompleted", 
-            lambda event: anonymization_completed_handler.handle(event)
-        )
-        consumer.register_event_handler(
-            "AnonymizationHistFailed", 
-            lambda event: anonymization_failed_handler.handle(event)
-        )
-        consumer.register_event_handler(
-            "AnonymizationXrayFailed", 
-            lambda event: anonymization_failed_handler.handle(event)
-        )
-        consumer.register_event_handler(
-            "AnonymizationMriFailed", 
-            lambda event: anonymization_failed_handler.handle(event)
-        )
         
         # Iniciar la escucha de mensajes
         await consumer.start_listening()
         logger.info("Consumidor de Pulsar inicializado correctamente")
+        
     except Exception as e:
         logger.error(f"Error al inicializar el consumidor de Pulsar: {str(e)}")
         logger.warning("Continuando sin consumidor de Pulsar configurado")
+        
 
 
 @app.on_event("shutdown")

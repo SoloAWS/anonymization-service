@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from typing import Dict, Any
@@ -55,88 +56,38 @@ class ImageReadyForAnonymizationHandler(EventHandler):
             file_path=event.file_path
         )
         
-        # Enrutar la tarea al servicio de anonimización correspondiente
-        routing_event = task.route_to_anonymizer()
-        
-        # Guardar la tarea en el repositorio
-        await self.repository.save(task)
-        
-        # Publicar evento de solicitud de anonimización
-        await self.publisher.publish_event(routing_event)
-        
-        logger.info(
-            f"Tarea de anonimización creada y enrutada: {task.id}. "
-            f"Imagen: {event.image_id}, Tipo: {image_type.value}, "
-            f"Destino: {routing_event.destination_service}"
-        )
-
-class AnonymizationCompletedHandler(EventHandler):
-    """
-    Manejador para el evento AnonymizationCompleted.
-    Procesa la confirmación de anonimización completada.
-    """
-    
-    def __init__(self, repository, publisher):
-        self.repository = repository
-        self.publisher = publisher
-    
-    async def handle(self, event: AnonymizationCompleted):
-        logger.info(
-            f"Anonimización completada para imagen {event.image_id}. "
-            f"Tarea: {event.task_id}, "
-            f"Tipo: {event.image_type.value}, "
-            f"Tiempo de procesamiento: {event.processing_time_ms}ms, "
-            f"Ruta del resultado: {event.result_file_path}"
-        )
-        
-        # Buscar la tarea en el repositorio
-        task = await self.repository.get_by_id(event.task_id)
-        
-        if task:
-            # Actualizar la tarea con la información de completado
+        try:
+            # En lugar de enrutar, procesamos la anonimización directamente
+            # Simular tiempo de procesamiento
+            await asyncio.sleep(1)
+            
+            # Completar anonimización y generar evento
             processing_event = task.complete_anonymization(
-                result_file_path=event.result_file_path,
-                processing_time_ms=event.processing_time_ms
+                result_file_path="result_file_path",
+                processing_time_ms=1000  # Tiempo simulado
             )
             
-            # Actualizar la tarea en el repositorio
-            await self.repository.update(task)
+            # Guardar la tarea en el repositorio
+            await self.repository.save(task)
             
-            # Publicar evento de imagen lista para procesamiento
-            await self.publisher.publish_event(processing_event)
+            # Publicar eventos (incluyendo ImageReadyForProcessing)
+            for event in task.events:
+                await self.publisher.publish_event(event)
             
-            logger.info(f"Tarea de anonimización actualizada como completada: {task.id}")
-        else:
-            logger.warning(f"No se encontró la tarea de anonimización: {event.task_id}")
-
-class AnonymizationFailedHandler(EventHandler):
-    """
-    Manejador para el evento AnonymizationFailed.
-    Procesa los fallos en la anonimización.
-    """
-    
-    def __init__(self, repository, publisher):
-        self.repository = repository
-        self.publisher = publisher
-    
-    async def handle(self, event: AnonymizationFailed):
-        logger.error(
-            f"Anonimización fallida para imagen {event.image_id}. "
-            f"Tarea: {event.task_id}, "
-            f"Tipo: {event.image_type.value}, "
-            f"Error: {event.error_message}"
-        )
-        
-        # Buscar la tarea en el repositorio
-        task = await self.repository.get_by_id(event.task_id)
-        
-        if task:
-            # Actualizar la tarea con la información de fallo
-            task.fail_anonymization(error_message=event.error_message)
+            logger.info(
+                f"Tarea de anonimización completada: {task.id}. "
+                f"Imagen: {event.image_id}, Tipo: {image_type.value}"
+            )
             
-            # Actualizar la tarea en el repositorio
-            await self.repository.update(task)
+        except Exception as e:
+            # En caso de error, marcamos la tarea como fallida
+            logger.error(f"Error al procesar anonimización: {str(e)}")
             
-            logger.info(f"Tarea de anonimización actualizada como fallida: {task.id}")
-        else:
-            logger.warning(f"No se encontró la tarea de anonimización: {event.task_id}")
+            task.fail_anonymization(error_message=f"Error al procesar anonimización: {str(e)}")
+            
+            # Guardar la tarea en el repositorio
+            await self.repository.save(task)
+            
+            # Publicar evento de fallo
+            for event in task.events:
+                await self.publisher.publish_event(event)
