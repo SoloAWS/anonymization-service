@@ -33,7 +33,7 @@ services:
   #     - "6650:6650"
   #     - "8080:8080"
   #   networks:
-  #     - anonymization_network
+  #     - pulsar_shared_network
   #   command: bin/pulsar standalone
 
   # # Pulsar Express
@@ -46,7 +46,7 @@ services:
   #   depends_on:
   #     - pulsar
   #   networks:
-  #     - anonymization_network
+  #     - pulsar_shared_network
 
   # FastAPI Anonymization Service
   anonymization-api:

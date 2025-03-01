@@ -108,7 +108,8 @@ async def startup_event():
             service_url=settings.pulsar_service_url,
             topics_mapping=PULSAR_CONSUMER_TOPICS_MAPPING
         )
-        
+        logger.info(f"Listening to consumer topics: {PULSAR_CONSUMER_TOPICS_MAPPING}")
+
         # Inicializar manejadores de eventos
         from .config.dependencies import get_anonymization_task_repository
         

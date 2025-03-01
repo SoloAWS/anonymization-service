@@ -211,11 +211,14 @@ class PulsarConsumer:
         self.running = True
         
         for event_type, topic in self.topics_mapping.items():
+            logger.info(f"Setting up consumer for topic: {topic}")
             subscription_name = f"anonymization-service-{event_type.lower()}"
             consumer = self._create_consumer(topic, subscription_name)
             self.consumers[topic] = consumer
             
             # Iniciar tarea asíncrona para procesar mensajes
+            
+            logger.info(f"Creating async task for topic: {topic}")
             asyncio.create_task(self._listen_for_messages(consumer))
         
         logger.info("Started listening for messages on all configured topics")
@@ -227,11 +230,20 @@ class PulsarConsumer:
         Args:
             consumer: Consumidor de Pulsar
         """
+        topic = None
+        for t, c in self.consumers.items():
+            if c == consumer:
+                topic = t
+                break
+        logger.info(f"Starting to listen for messages on consumer for topic: {topic}")
+        logger.info(f"Starting to listen for messages on consumer")
         while self.running:
             try:
+                logger.debug("Waiting to receive message")
                 # Recibir mensaje con timeout (para poder detener limpiamente)
-                message = consumer.receive(timeout_millis=1000)
+                message = consumer.receive(timeout_millis=3000)
                 if message:
+                    logger.info(f"Received message: {message}")
                     await self._process_message(consumer, message)
             except pulsar.Timeout:
                 # Timeout es normal, continuar
