@@ -6,7 +6,6 @@ from typing import Any
 @dataclass
 class Command:
     """Base command class"""
-
     pass
 
 
