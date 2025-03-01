@@ -1,29 +1,83 @@
-### Health Check
-GET http://localhost:8000/anonymization/health
+### Verificación de estado del servicio
+GET http://localhost:8001/anonymization/health
 
-### Process Image
-# @name processImage
-POST http://localhost:8000/processing/process
-Content-Type: multipart/form-data; boundary=WebAppBoundary
+### Verificación de estado de la API
+GET http://localhost:8001/api/v1/anonymization/health
 
---WebAppBoundary
-Content-Disposition: form-data; name="image_type"
+### Enrutar imagen para anonimización
+# @name routeImage
+POST http://localhost:8001/api/v1/anonymization/route
+Content-Type: application/json
 
-XRAY
---WebAppBoundary
-Content-Disposition: form-data; name="region"
+{
+  "image_id": "550e8400-e29b-41d4-a716-446655440000",
+  "task_id": "550e8400-e29b-41d4-a716-446655440001",
+  "image_type": "XRAY",
+  "source": "hospital_central",
+  "modality": "XRAY",
+  "region": "TORAX",
+  "file_path": "/data/images/original/xray_550e8400.jpg"
+}
 
-latam
---WebAppBoundary
-Content-Disposition: form-data; name="priority"
+### Marcar tarea como completada
+# @name completeTask
+POST http://localhost:8001/api/v1/anonymization/tasks/{{routeImage.response.body.task_id}}/complete
+Content-Type: application/json
 
-1
---WebAppBoundary
-Content-Disposition: form-data; name="file"; filename="image.jpg"
-Content-Type: image/jpeg
+{
+  "result_file_path": "/data/images/anonymized/xray_550e8400_anon.jpg",
+  "processing_time_ms": 1350
+}
 
-< ./image.jpg
---WebAppBoundary--
+### Marcar tarea como fallida
+POST http://localhost:8001/api/v1/anonymization/tasks/{{routeImage.response.body.task_id}}/fail
+Content-Type: application/json
 
-### Get Task Status
-GET http://localhost:8000/processing/task/{{processImage.response.body.task_id}}
+{
+  "error_message": "No se pudo anonimizar la imagen debido a metadatos faltantes"
+}
+
+### Enrutar imagen de histología
+# @name routeHistImage
+POST http://localhost:8001/api/v1/anonymization/route
+Content-Type: application/json
+
+{
+  "image_id": "550e8400-e29b-41d4-a716-446655440002",
+  "task_id": "550e8400-e29b-41d4-a716-446655440003",
+  "image_type": "HISTOLOGY",
+  "source": "laboratorio_patologia",
+  "modality": "HISTOLOGY",
+  "region": "HEPATICA",
+  "file_path": "/data/images/original/hist_550e8400.jpg"
+}
+
+### Enrutar imagen de resonancia magnética
+# @name routeMriImage
+POST http://localhost:8001/api/v1/anonymization/route
+Content-Type: application/json
+
+{
+  "image_id": "550e8400-e29b-41d4-a716-446655440004",
+  "task_id": "550e8400-e29b-41d4-a716-446655440005",
+  "image_type": "MRI",
+  "source": "centro_diagnostico",
+  "modality": "MRI",
+  "region": "CEREBRO",
+  "file_path": "/data/images/original/mri_550e8400.jpg"
+}
+
+### Enrutar imagen con tipo desconocido
+# @name routeUnknownImage
+POST http://localhost:8001/api/v1/anonymization/route
+Content-Type: application/json
+
+{
+  "image_id": "550e8400-e29b-41d4-a716-446655440006",
+  "task_id": "550e8400-e29b-41d4-a716-446655440007",
+  "image_type": "UNKNOWN",
+  "source": "dispositivo_externo",
+  "modality": "OTROS",
+  "region": "DESCONOCIDA",
+  "file_path": "/data/images/original/unknown_550e8400.jpg"
+}

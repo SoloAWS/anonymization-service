@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
     
     # Configuración de la base de datos
-    db_host: str = Field(default="localhost")
-    db_port: int = Field(default=5433)
+    db_host: str = Field(default="postgres")
+    db_port: int = Field(default=5432)
     db_user: str = Field(default="user")
     db_password: str = Field(default="password")
     db_name: str = Field(default="anonymization_db")
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         return os.getenv("DATABASE_URL", f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}")
     
     # Configuración de Pulsar
-    pulsar_service_url: str = Field(default="pulsar://localhost:6650")
+    pulsar_service_url: str = Field(default="pulsar://pulsar:6650")
     
     # Configuración del API
     api_host: str = Field(default="0.0.0.0")

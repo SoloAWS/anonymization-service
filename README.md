@@ -1,106 +1,108 @@
-# Processing Service
+# Servicio de Anonimización
 
-A processing service implemented following Domain-Driven Design (DDD) principles and event-driven architecture.
+## Descripción general
 
-## Repository
-[https://github.com/SoloAWS/processing-service](https://github.com/SoloAWS/processing-service)
+El Servicio de Anonimización es un microservicio diseñado para anonimizar imágenes médicas antes de que sean procesadas en etapas posteriores de la cadena. Este servicio recibe imágenes que necesitan anonimización, las procesa, y luego notifica al servicio de procesamiento cuando las imágenes están listas para el siguiente paso.
 
-## Video
-[https://youtu.be/G08C64144Ew](https://youtu.be/G08C64144Ew)
+## Arquitectura
 
-## Architecture
+El servicio sigue un diseño dirigido por el dominio con un enfoque de arquitectura limpia:
 
-![alt text](docs/image-3.png)
+- **Capa de Dominio**: Contiene la lógica de negocio central y las entidades
+- **Capa de Aplicación**: Implementa los casos de uso y orquesta los objetos de dominio
+- **Capa de Infraestructura**: Proporciona implementaciones para servicios externos y persistencia
+- **Capa de API**: Expone la funcionalidad a través de endpoints RESTful
 
-The service follows a hexagonal architecture (ports and adapters) with the following key components:
+## Características principales
 
-### Domain Layer
-- **Entities**: ProcessingTask
-- **Value Objects**: ProcessingMetadata, ProcessingResult, ImageType, ProcessingStatus
-- **Events**: ProcessingStarted, ProcessingCompleted, ProcessingFailed
-- **Repositories**: ProcessingRepository
+- Recibe notificaciones sobre imágenes que necesitan anonimización
+- Crea y rastrea tareas de anonimización en la base de datos
+- Realiza la anonimización de imágenes según el tipo (HISTOLOGÍA, RAYOS X, RESONANCIA MAGNÉTICA)
+- Actualiza el estado de las tareas y publica eventos al completarse o fallar
+- Notifica a los servicios posteriores cuando las imágenes están listas para procesamiento
 
-### Application Layer
-- **Commands**: ProcessImageCommand
-- **Queries**: GetTaskStatusQuery
-- **Event Handlers**: PulsarEventHandler
+## Flujo de eventos
 
-### Infrastructure Layer
-- **Database**: PostgreSQL with SQLAlchemy
-- **Message Broker**: Apache Pulsar
-- **API**: FastAPI
+1. **Recepción de imagen**: El servicio recibe un evento `ImageReadyForAnonymization` a través de mensajería Pulsar
+2. **Creación de tarea**: Los detalles de la imagen se almacenan como una `AnonymizationTask` en la base de datos
+3. **Procesamiento de anonimización**: El servicio realiza directamente la anonimización
+4. **Completado de tarea**: El estado de la tarea se actualiza con los resultados
+5. **Notificación de procesamiento**: Se publica un evento `ImageReadyForProcessing` para notificar a los servicios posteriores
 
-# Project Structure
+## Endpoints de API
+
+- `POST /api/v1/anonymization/route`: Enruta una imagen para anonimización
+- `POST /api/v1/anonymization/tasks/{task_id}/complete`: Marca una tarea como completada
+- `POST /api/v1/anonymization/tasks/{task_id}/fail`: Marca una tarea como fallida
+- `GET /api/v1/anonymization/health`: Endpoint de verificación de estado
+
+## Tópicos de mensajes
+
+El servicio consume y produce eventos en los siguientes tópicos de Pulsar:
+
+- **Consumo**:
+  - `persistent://public/default/image-anonymization`: Recibe eventos `ImageReadyForAnonymization`
+
+- **Producción**:
+  - `persistent://public/default/image-processing`: Publica eventos `ImageReadyForProcessing`
+  - `persistent://public/default/anonymization-completed`: Publica eventos `AnonymizationCompleted`
+  - `persistent://public/default/anonymization-failed`: Publica eventos `AnonymizationFailed`
+
+## Configuración
+
+El servicio puede configurarse mediante variables de entorno o un archivo `.env`:
+
+- `ENVIRONMENT`: Entorno (dev, test, prod)
+- `LOG_LEVEL`: Nivel de registro
+- `DATABASE_URL`: Cadena de conexión a PostgreSQL
+- `PULSAR_SERVICE_URL`: Cadena de conexión a Apache Pulsar
+- `API_HOST`: Host para el servidor API
+- `API_PORT`: Puerto para el servidor API
+
+## Instalación y despliegue
+
+### Requisitos previos
+- Python 3.8+
+- PostgreSQL
+- Apache Pulsar
+
+### Instalación
+
+1. Clonar el repositorio
+2. Instalar dependencias: `pip install -r requirements.txt`
+3. Configurar variables de entorno
+4. Inicializar la base de datos: `python -m anonymization_service.initialize_db`
+5. Iniciar el servicio: `python -m anonymization_service.main`
+
+### Despliegue con Docker
 
 ```
-processing-service/
-├── src/
-│   └── processing_service/
-│       ├── api/                  # API layer
-│       ├── config/              # Configuration
-│       │   ├── database.py
-│       │   └── settings.py
-│       ├── modules/             # Business Modules
-│       │   ├── processing/      # Main Processing Module
-│       │   │   ├── api/        # API Controllers
-│       │   │   ├── application/
-│       │   │   │   ├── commands/   # Command Handlers
-│       │   │   │   ├── queries/    # Query Handlers
-│       │   │   │   └── events/     # Event Handlers
-│       │   │   ├── domain/     # Domain Model
-│       │   │   │   ├── entities.py
-│       │   │   │   ├── events.py
-│       │   │   │   ├── repositories.py
-│       │   │   │   └── value_objects.py
-│       │   │   └── infrastructure/
-│       │   │       ├── messaging/   # Message Broker
-│       │   │       └── persistence/ # Data Access
-│       │   ├── latam_processing/    # LATAM Module
-│       │   └── usa_processing/      # USA Module
-│       └── seedwork/            # Shared Kernel
-│           ├── application/     # Base Application
-│           ├── domain/         # Base Domain
-│           └── infrastructure/ # Base Infrastructure
-├── tests/                      # Tests
-│   ├── unit/
-│   └── integration/
-├── docker-compose.yml          # Docker Compose
-├── processing.Dockerfile       # Main Service Dockerfile
-└── requirements.txt           # Python Dependencies
+docker build -t servicio-anonimizacion .
+docker run -p 8001:8001 servicio-anonimizacion
 ```
 
-## Quick Start
+## Desarrollo
 
-1. **Prerequisites**
-   - Docker and Docker Compose
+### Estructura del proyecto
 
-2. **Run the Service**
-   ```bash
-   docker-compose up --build
-   ```
-
-3. **Access Points**
-   - API: http://localhost:8000
-   - Pulsar Admin: http://localhost:8080
-   - Pulsar Express: http://localhost:3000
-   - PostgreSQL: localhost:5432
-
-4. **Test Endpoints**
-   - Health Check: `GET /processing/health`
-   - Process Image: `POST /processing/process`
-   - Get Task Status: `GET /task/{task_id}`
-  
-## Test
-
-- Install [REST Client VSCode Extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
-- Open the file rest/processing.rest and send requests
-
-![alt text](docs/image.png)
-![alt text](docs/image-1.png)
-![alt text](docs/image-2.png)
-
-# Start server locally (Optional)
-
-```sh
-uvicorn src.processing_service.main:app --reload --host 0.0.0.0 --port 8000
 ```
+anonymization_service/
+├── api/                    # Capa de API
+├── config/                 # Configuración
+├── modules/                # Módulos de funcionalidades
+│   └── anonymization/      # Módulo de anonimización
+│       ├── application/    # Capa de aplicación
+│       ├── domain/         # Capa de dominio
+│       └── infrastructure/ # Capa de infraestructura
+└── seedwork/               # Componentes compartidos
+```
+
+### Ejecución de pruebas
+
+```
+pytest tests/
+```
+
+## Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - consulte el archivo LICENSE para más detalles.
