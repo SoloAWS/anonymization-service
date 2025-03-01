@@ -1,0 +1,29 @@
+### Health Check
+GET http://localhost:8000/anonymization/health
+
+### Process Image
+# @name processImage
+POST http://localhost:8000/processing/process
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="image_type"
+
+XRAY
+--WebAppBoundary
+Content-Disposition: form-data; name="region"
+
+latam
+--WebAppBoundary
+Content-Disposition: form-data; name="priority"
+
+1
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="image.jpg"
+Content-Type: image/jpeg
+
+< ./image.jpg
+--WebAppBoundary--
+
+### Get Task Status
+GET http://localhost:8000/processing/task/{{processImage.response.body.task_id}}
