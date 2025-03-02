@@ -84,6 +84,7 @@ async def startup_event():
     try:
         publisher = PulsarPublisher(
             service_url=settings.pulsar_service_url,
+            token=settings.pulsar_token,
             topics_mapping=PULSAR_PUBLISHER_TOPICS_MAPPING
         )
         
@@ -99,6 +100,7 @@ async def startup_event():
     try:
         consumer = PulsarConsumer(
             service_url=settings.pulsar_service_url,
+            token=settings.pulsar_token,
             topics_mapping=PULSAR_CONSUMER_TOPICS_MAPPING
         )
         logger.info(f"Listening to consumer topics: {PULSAR_CONSUMER_TOPICS_MAPPING}")

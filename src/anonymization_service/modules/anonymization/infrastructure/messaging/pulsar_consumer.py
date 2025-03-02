@@ -18,17 +18,19 @@ class PulsarConsumer:
     Se encarga de suscribirse a los tópicos configurados y procesar los mensajes.
     """
     
-    def __init__(self, service_url: str, topics_mapping: Dict[str, str], client_config: Dict[str, Any] = None):
+    def __init__(self, service_url: str, topics_mapping: Dict[str, str], token: str, client_config: Dict[str, Any] = None):
         """
         Inicializa el consumidor de mensajes
         
         Args:
             service_url: URL del servicio Pulsar
             topics_mapping: Diccionario que mapea tipos de eventos a tópicos
+            token: Token de autenticación para Pulsar
             client_config: Configuración adicional para el cliente Pulsar
         """
         self.service_url = service_url
         self.topics_mapping = topics_mapping
+        self.token = token
         self.client_config = client_config or {}
         self.client = None
         self.consumers = {}
@@ -41,6 +43,7 @@ class PulsarConsumer:
             try:
                 self.client = pulsar.Client(
                     service_url=self.service_url,
+                    authentication=pulsar.AuthenticationToken(self.token),
                     operation_timeout_seconds=self.client_config.get('operation_timeout_seconds', 30),
                     io_threads=self.client_config.get('io_threads', 1)
                 )

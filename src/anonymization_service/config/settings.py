@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     
     # Configuración de Pulsar
     pulsar_service_url: str = Field(default="pulsar://pulsar:6650")
+    pulsar_token: str = Field(default="")
     
     # Configuración del API
     api_host: str = Field(default="0.0.0.0")
