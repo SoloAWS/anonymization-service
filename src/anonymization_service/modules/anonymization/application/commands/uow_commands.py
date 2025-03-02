@@ -64,7 +64,7 @@ class UoWRouteToAnonymizerHandler(CommandHandler):
                 await repository.save(task)
                 
                 # Publicar evento de solicitud de anonimización
-                await self.publisher.publish_event(routing_event)
+                self.publisher.publish_event(routing_event)
                 
                 # Confirmar transacción
                 await self.uow.commit()
@@ -106,7 +106,7 @@ class UoWCompleteAnonymizationHandler(CommandHandler):
                 
                 # Publicar eventos
                 for event in task.events:
-                    await self.publisher.publish_event(event)
+                    self.publisher.publish_event(event)
                 
                 # Actualizar la tarea
                 await repository.update(task)
@@ -147,7 +147,7 @@ class UoWFailAnonymizationHandler(CommandHandler):
                 fail_event = task.fail_anonymization(error_message=command.error_message)
                 
                 # Publicar evento
-                await self.publisher.publish_event(fail_event)
+                self.publisher.publish_event(fail_event)
                 
                 # Actualizar la tarea
                 await repository.update(task)

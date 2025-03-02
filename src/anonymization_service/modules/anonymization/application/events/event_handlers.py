@@ -72,7 +72,7 @@ class ImageReadyForAnonymizationHandler(EventHandler):
             
             # Publicar eventos (incluyendo ImageReadyForProcessing)
             for event in task.events:
-                await self.publisher.publish_event(event)
+                self.publisher.publish_event(event)
             
             logger.info(
                 f"Tarea de anonimización completada: {task.id}. "
@@ -90,4 +90,4 @@ class ImageReadyForAnonymizationHandler(EventHandler):
             
             # Publicar evento de fallo
             for event in task.events:
-                await self.publisher.publish_event(event)
+                self.publisher.publish_event(event)
