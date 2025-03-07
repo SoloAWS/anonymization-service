@@ -47,6 +47,7 @@ class PulsarConsumer:
         self.consumers = {}
         self.event_handlers = {}
         self.running = False
+        self.command_handlers = {}
 
     def _initialize(self):
         """Inicializa la conexión a Pulsar si aún no existe"""
@@ -111,34 +112,46 @@ class PulsarConsumer:
             # Decodificar el mensaje
             data = json.loads(message.data().decode("utf-8"))
 
-            # Extraer el tipo de evento
-            event_type = data.get("type")
+            # Extraer el tipo de mensaje (evento o comando)
+            message_type = data.get("type")
 
-            if not event_type:
-                logger.warning(f"Received message without event type: {data}")
+            if not message_type:
+                logger.warning(f"Received message without type: {data}")
                 consumer.acknowledge(message)
                 return
 
-            logger.info(f"Received message of type {event_type}: {data}")
+            logger.info(f"Received message of type {message_type}: {data}")
 
-            # Verificar si hay un manejador registrado para este tipo de evento
-            if event_type in self.event_handlers:
+            # Verificar si es un comando
+            if message_type in self.command_handlers:
+                logger.info(f"Processing command: {message_type}")
+                handler = self.command_handlers[message_type]
+                
+                # Obtener datos del comando
+                command_data = data.get("data", {})
+                correlation_id = data.get("correlation_id")
+                
+                # Procesar comando
+                await handler(command_data, correlation_id)
+                logger.info(f"Command {message_type} processed successfully")
+            # Si no es comando, verificar si es un evento conocido
+            elif message_type in self.event_handlers:
                 # Convertir el mensaje en un evento de dominio
-                event = self._create_event_from_data(event_type, data)
+                event = self._create_event_from_data(message_type, data)
 
                 # Procesar el evento
                 if event:
-                    handler = self.event_handlers[event_type]
+                    handler = self.event_handlers[message_type]
                     await handler(event)
-                    logger.info(f"Event {event_type} processed successfully")
+                    logger.info(f"Event {message_type} processed successfully")
                 else:
                     logger.warning(f"Failed to create event from data: {data}")
             else:
-                logger.warning(f"No handler registered for event type: {event_type}")
+                logger.warning(f"No handler registered for message type: {message_type}")
 
             # Confirmar el mensaje
             consumer.acknowledge(message)
-
+            
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
             # Negar el mensaje para que pueda ser reprocesado
@@ -275,3 +288,17 @@ class PulsarConsumer:
 
         self.consumers = {}
         logger.info("Stopped listening for messages and released all resources")
+        
+        
+    def register_command_handler(
+        self, command_type: str, handler_func: Callable[[Dict[str, Any]], Awaitable[None]]
+    ):
+        """
+        Registra un manejador para un tipo de comando específico
+
+        Args:
+            command_type: Tipo de comando a manejar
+            handler_func: Función asíncrona que maneja el comando
+        """
+        self.command_handlers[command_type] = handler_func
+        logger.info(f"Registered handler for command type: {command_type}")

@@ -6,7 +6,7 @@ from typing import Optional
 from ....seedwork.domain.entities import Entity
 from ....seedwork.domain.aggregate import AggregateRoot
 from .value_objects import ImageType, AnonymizationStatus, ImageMetadata, AnonymizationResult
-from .events import AnonymizationRequested, AnonymizationCompleted, AnonymizationFailed, ImageReadyForProcessing
+from .events import AnonymizationRequested, AnonymizationCompleted, AnonymizationFailed, ImageReadyForProcessing, AnonymizationRolledBack
 
 @dataclass
 class AnonymizationTask(AggregateRoot):
@@ -104,6 +104,24 @@ class AnonymizationTask(AggregateRoot):
             task_id=self.task_id,
             image_type=self.image_type,
             error_message=error_message
+        )
+        
+        self.add_event(event)
+        return event
+    
+    def rollback_anonymization(self, reason: str) -> AnonymizationRolledBack:
+        """
+        Marca la tarea de anonimización como revertida por compensación.
+        """
+        self.status = AnonymizationStatus.FAILED
+        self.completed_at = datetime.now()
+        self.error_message = f"Anonimización revertida por compensación: {reason}"
+        
+        # Crear evento de anonimización revertida
+        event = AnonymizationRolledBack(
+            task_id=self.id,
+            image_id=self.image_id,
+            reason=reason
         )
         
         self.add_event(event)

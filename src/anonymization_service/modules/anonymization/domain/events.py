@@ -119,3 +119,20 @@ class ImageReadyForProcessing(DomainEvent):
             "modality": self.modality,
             "region": self.region
         }
+        
+@dataclass
+class AnonymizationRolledBack(DomainEvent):
+    """Evento que indica que se ha revertido una anonimización por compensación"""
+    task_id: uuid.UUID = field(default=None)
+    image_id: uuid.UUID = field(default=None)
+    reason: str = field(default=None)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    timestamp: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            "task_id": str(self.task_id),
+            "image_id": str(self.image_id) if self.image_id else None,
+            "reason": self.reason
+        }
