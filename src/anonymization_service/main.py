@@ -23,6 +23,8 @@ from .modules.anonymization.domain.events import (
     AnonymizationCompleted,
     AnonymizationFailed,
 )
+from .modules.anonymization.application.commands.command_handlers import command_handlers, handle_rollback_anonymization
+
 
 # Configurar logging
 logging.basicConfig(
@@ -125,6 +127,21 @@ async def startup_event():
             "ImageReadyForAnonymization",
             lambda event: image_ready_handler.handle(event),
         )
+        
+        from .modules.anonymization.application.commands.command_handlers import handle_rollback_anonymization
+        from .seedwork.infrastructure.uow import SqlAlchemyUnitOfWork
+        from .config.dependencies import get_repository_factories
+        
+        # Crear función para obtener un UnitOfWork
+        def get_uow():
+            return SqlAlchemyUnitOfWork(create_session, get_repository_factories())
+        
+        # Registrar el handler
+        consumer.register_command_handler(
+            "RollbackAnonymization", 
+            lambda data, corr_id=None: handle_rollback_anonymization(data, get_uow(), publisher, corr_id)
+        )
+        logger.info("Registered command handler for RollbackAnonymization")
 
         # Iniciar la escucha de mensajes
         await consumer.start_listening()

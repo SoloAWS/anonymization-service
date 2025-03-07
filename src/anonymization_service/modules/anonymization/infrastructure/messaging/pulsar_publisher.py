@@ -41,13 +41,16 @@ class PulsarPublisher:
         """Inicializa la conexión a Pulsar si aún no existe"""
         if not self.client:
             try:
+                # self.client = pulsar.Client(
+                #     "pulsar+ssl://pc-286ed2b3.gcp-shared-usce1.g.snio.cloud:6651",
+                #     authentication=pulsar.AuthenticationToken(
+                #         "eyJhbGciOiJSUzI1NiIsImtpZCI6IjgzODJkMDdiLWJjNmQtNTJhZi04ZDY2LTNiZWRhNDJmMjNjMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsidXJuOnNuOnB1bHNhcjpzZXJ2ZXJsZXNzOnBpLTdhOWU3MzNiIl0sImV4cCI6MTc0MzU0MjUwOCwiaHR0cHM6Ly9zdHJlYW1uYXRpdmUuaW8vc2NvcGUiOlsiYWRtaW4iLCJhY2Nlc3MiXSwiaHR0cHM6Ly9zdHJlYW1uYXRpdmUuaW8vdXNlcm5hbWUiOiJhZG1pbnNlcnZpY2VhY2NvdW50QG8tbGd3eXAuYXV0aC5zdHJlYW1uYXRpdmUuY2xvdWQiLCJpYXQiOjE3NDA5NTA1MTIsImlzcyI6Imh0dHBzOi8vcGMtMjg2ZWQyYjMuZ2NwLXNoYXJlZC11c2NlMS5nLnNuaW8uY2xvdWQvYXBpa2V5cy8iLCJqdGkiOiIwNmQxMmRiMzU0MGY0ZWE3OTc4YjJlM2NkNzU4OTQ3MCIsInBlcm1pc3Npb25zIjpbXSwic3ViIjoiRHV0bnVsN1NiTlpvbUFtd21UR0VCQ0JEMU5uaDZpc2hAY2xpZW50cyJ9.2SvuidJzGeZ99fPS4oCbLrK3ESH9JKi25RoAIJSUeDpI9_EJHxN-SCBwaknZHBAlM4ae9CEndrq8cwrB3f4M85Cvxmc6-kuit7RG48cnYC8ajzR7OFkJkELico_NtIBECQXVQO0br9bRly7aQjNSpQitYNif0WL8G1oS_kVKI-suXXPrvrO1zenCvriaXIXqYrRPvxF5v-SVMksXCdxdkwhGmUVkkG76GZ7Tulwu7UUlb1xQBwij-iT1EOzOgxInKlhvzDiZrPx0IYbHvxZc8lICXEhfowxyRyxAkAJ6KZnCyyQ4cN1WmDR5UdwN4z5j3XV9OIg3V3g8739idwo-SQ"
+                #     ),
+                # )
                 self.client = pulsar.Client(
-                    "pulsar+ssl://pc-286ed2b3.gcp-shared-usce1.g.snio.cloud:6651",
-                    authentication=pulsar.AuthenticationToken(
-                        "eyJhbGciOiJSUzI1NiIsImtpZCI6IjgzODJkMDdiLWJjNmQtNTJhZi04ZDY2LTNiZWRhNDJmMjNjMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsidXJuOnNuOnB1bHNhcjpzZXJ2ZXJsZXNzOnBpLTdhOWU3MzNiIl0sImV4cCI6MTc0MzU0MjUwOCwiaHR0cHM6Ly9zdHJlYW1uYXRpdmUuaW8vc2NvcGUiOlsiYWRtaW4iLCJhY2Nlc3MiXSwiaHR0cHM6Ly9zdHJlYW1uYXRpdmUuaW8vdXNlcm5hbWUiOiJhZG1pbnNlcnZpY2VhY2NvdW50QG8tbGd3eXAuYXV0aC5zdHJlYW1uYXRpdmUuY2xvdWQiLCJpYXQiOjE3NDA5NTA1MTIsImlzcyI6Imh0dHBzOi8vcGMtMjg2ZWQyYjMuZ2NwLXNoYXJlZC11c2NlMS5nLnNuaW8uY2xvdWQvYXBpa2V5cy8iLCJqdGkiOiIwNmQxMmRiMzU0MGY0ZWE3OTc4YjJlM2NkNzU4OTQ3MCIsInBlcm1pc3Npb25zIjpbXSwic3ViIjoiRHV0bnVsN1NiTlpvbUFtd21UR0VCQ0JEMU5uaDZpc2hAY2xpZW50cyJ9.2SvuidJzGeZ99fPS4oCbLrK3ESH9JKi25RoAIJSUeDpI9_EJHxN-SCBwaknZHBAlM4ae9CEndrq8cwrB3f4M85Cvxmc6-kuit7RG48cnYC8ajzR7OFkJkELico_NtIBECQXVQO0br9bRly7aQjNSpQitYNif0WL8G1oS_kVKI-suXXPrvrO1zenCvriaXIXqYrRPvxF5v-SVMksXCdxdkwhGmUVkkG76GZ7Tulwu7UUlb1xQBwij-iT1EOzOgxInKlhvzDiZrPx0IYbHvxZc8lICXEhfowxyRyxAkAJ6KZnCyyQ4cN1WmDR5UdwN4z5j3XV9OIg3V3g8739idwo-SQ"
-                    ),
+                    service_url=self.service_url,
+                    authentication=pulsar.AuthenticationToken(self.token),
                 )
-
                 logger.info("Pulsar client initialized successfully")
             except Exception as e:
                 logger.error(f"Error initializing Pulsar client: {str(e)}")
