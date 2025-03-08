@@ -13,7 +13,7 @@ grpcio-tools==1.70.0
 h11==0.14.0
 idna==3.10
 protobuf==5.29.3
-pulsar-client==3.6.0
+pulsar-client==3.6.1
 pydantic==2.10.6
 pydantic-settings==2.8.0
 pydantic_core==2.27.2
